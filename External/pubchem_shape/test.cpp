@@ -482,3 +482,22 @@ TEST_CASE("Atoms excluded from Color features") {
   auto shape2 = PrepareConformer(*m1, -1, opts);
   CHECK(shape2.coord.size() == 24);
 }
+
+TEST_CASE("memory check") {
+  std::string dirName = getenv("RDBASE");
+  dirName += "/External/pubchem_shape/test_data/";
+  v2::FileParsers::MolFileParserParams ps;
+  ps.removeHs = false;
+  auto mol1 = v2::FileParsers::MolFromMolFile(dirName + "m1_beforeAlign.sdf", ps);
+  REQUIRE(mol1);
+  auto mol2 = v2::FileParsers::MolFromMolFile(dirName + "m2_beforeAlign.sdf", ps);
+  REQUIRE(mol2);
+
+  RWMol cp(*mol2);
+  std::vector<float> matrix(12, 0.0);
+  auto [nbr_st, nbr_ct] =
+      AlignMolecule(*mol1, cp, matrix, -1, -1, test_use_colors, test_opt_param,
+                    test_max_preiters, test_max_postiters);
+  CHECK_THAT(nbr_st, Catch::Matchers::WithinAbs(0.911, 0.005));
+  CHECK_THAT(nbr_ct, Catch::Matchers::WithinAbs(0.558, 0.005));
+}

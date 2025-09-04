@@ -164,7 +164,8 @@ std::vector<std::vector<const ROMol *>> *getPh4Patterns() {
 }
 
 namespace {
-std::vector<std::pair<std::vector<unsigned int>, unsigned int>> extractFeatures(
+/*
+  std::vector<std::pair<std::vector<unsigned int>, unsigned int>> extractFeatures(
     const ROMol &mol, const ShapeInputOptions &shapeOpts) {
   // unpack features (PubChem-specific property from SDF)
   // NOTE: this unpacking assumes that RWMol-atom-index = SDF-atom-number - 1
@@ -247,8 +248,107 @@ std::vector<std::pair<std::vector<unsigned int>, unsigned int>> extractFeatures(
       }
     }
   }
+  return feature_idx_type;*/
+  std::vector<std::pair<std::vector<unsigned int>, unsigned int>> extractFeatures(
+    const ROMol &mol, const ShapeInputOptions &shapeOpts) {
+  // unpack features (PubChem-specific property from SDF)
+  // NOTE: this unpacking assumes that RWMol-atom-index = SDF-atom-number - 1
+  //   e.g. RWMol uses [0..N-1] and SDF uses [1..N], with atoms in the same
+  //   order
+  // If there are no PubChem features, falls back on RDKit pphore types.
+
+  std::vector<std::pair<std::vector<unsigned int>, unsigned int>>
+      feature_idx_type;
+  if (shapeOpts.useColors) {
+    std::string features;
+    if (mol.getPropIfPresent(pubchemFeatureName, features)) {
+      // regular atoms have type 0; feature "atoms" (features represented by a
+      // single point+radius) must have type > 0
+      static const std::map<std::string, unsigned int> atomTypes = {
+          {"acceptor", 1}, {"anion", 2},      {"cation", 3},
+          {"donor", 4},    {"hydrophobe", 5}, {"rings", 6},
+      };
+      std::vector<std::string> custom_atom_types;
+
+      std::istringstream iss(features);
+      std::string line;
+      unsigned int n = 0;
+      while (std::getline(iss, line)) {
+        if (n == 0) {
+          feature_idx_type.resize(stoul(line));
+        }
+
+        else {
+          unsigned int f = n - 1;
+          if (f >= feature_idx_type.size()) {
+            throw ValueErrorException("Too many features");
+          }
+
+          std::istringstream iss2(line);
+          std::string token;
+          unsigned int t = 0;
+          while (std::getline(iss2, token, ' ')) {
+            if (t == 0) {
+              feature_idx_type[f].first.resize(stoul(token));
+            } else if (t <= feature_idx_type[f].first.size()) {
+              feature_idx_type[f].first[t - 1] = stoul(token) - 1;
+            } else {
+#if 0
+              auto type = atomTypes.find(token);
+              if (type == atomTypes.end()) {
+                throw ValueErrorException("Invalid feature type: " + token);
+              }
+              feature_idx_type[f].second = type->second;
+#else
+              auto loc = std::find(custom_atom_types.begin(),
+                                   custom_atom_types.end(), token);
+              auto fidx = 0;
+              if (loc == custom_atom_types.end()) {
+                custom_atom_types.push_back(token);
+                fidx = custom_atom_types.size();
+              } else {
+                fidx = loc - custom_atom_types.begin() + 1;
+              }
+              feature_idx_type[f].second = fidx;
+#endif
+            }
+            ++t;
+          }
+          if (t != (feature_idx_type[f].first.size() + 2)) {
+            throw ValueErrorException("Wrong number of tokens in feature");
+          }
+        }
+
+        ++n;
+      }
+      if (n != (feature_idx_type.size() + 1)) {
+        throw ValueErrorException("Wrong number of features");
+      }
+
+      DEBUG_MSG("# features: " << feature_idx_type.size());
+    } else {
+      const auto pattVects = getPh4Patterns();
+      feature_idx_type.clear();
+
+      unsigned pattIdx = 1;
+      for (const auto &patts : *pattVects) {
+        for (const auto patt : patts) {
+          auto matches = SubstructMatch(mol, *patt);
+          for (auto match : matches) {
+            std::vector<unsigned int> ats;
+            for (const auto &pr : match) {
+              ats.push_back(pr.second);
+            }
+            feature_idx_type.emplace_back(ats, pattIdx);
+          }
+        }
+        ++pattIdx;
+      }
+    }
+  }
   return feature_idx_type;
 }
+
 
 bool atomInSubset(unsigned int atomIdx, const ShapeInputOptions &shapeOpts) {
   if (shapeOpts.atomSubset.empty()) {
@@ -382,6 +482,7 @@ ShapeInput PrepareConformer(const ROMol &mol, int confId,
     throw ValueErrorException("Conformer must be 3D");
   }
   unsigned int nAtoms = mol.getNumAtoms();
+  // std::cout << "num atoms: " << nAtoms << std::endl;
   // DEBUG_MSG("num atoms: " << nAtoms);
 
   // Start with the arrays as large as they will possibly have to be.
@@ -389,6 +490,11 @@ ShapeInput PrepareConformer(const ROMol &mol, int confId,
   unsigned int nAlignmentAtoms = nAtoms + feature_idx_type.size();
   std::vector<double> rad_vector(nAlignmentAtoms);
   res.atom_type_vector.resize(nAlignmentAtoms, 0);
+
+  for (unsigned i = 0; i < nAtoms; ++i) {
+    RDGeom::Point3D pos = conformer.getAtomPos(i);
+    //std::cout << "initial atom " << i << ": " << pos.x << ", " << pos.y << ", " << pos.z << std::endl;
+  }
 
   RDGeom::Point3D ave;
   unsigned int nSelectedAtoms = 0;
@@ -404,9 +510,11 @@ ShapeInput PrepareConformer(const ROMol &mol, int confId,
   unsigned int numFeatures = 0;
   extractFeatureCoords(conformer, nAtoms, nSelectedAtoms, feature_idx_type,
                        shapeOpts, ave, numFeatures, res, rad_vector);
-
+  //std::cout << "origin shift: " << -ave.x << ", " << -ave.y << ", " << -ave.z << std::endl;
   // Now cut the final vectors down to the actual number of atoms and
   // features used.
+  //std::cout << "num selected atoms: " << nSelectedAtoms << std::endl;
+  //std::cout << "num features: " << numFeatures << std::endl;
   nAlignmentAtoms = nSelectedAtoms + numFeatures;
   res.coord.resize(nAlignmentAtoms * 3);
   rad_vector.resize(nAlignmentAtoms);
@@ -480,6 +588,7 @@ void TransformConformer(const std::vector<double> &finalTrans,
                         const std::vector<float> &matrix, ShapeInput &fitShape,
                         Conformer &fitConf) {
   const unsigned int nAtoms = fitConf.getOwningMol().getNumAtoms();
+  //std::cout << "shift: " << fitShape.shift[0] << ", " << fitShape.shift[1] << ", " << fitShape.shift[2] << std::endl;
   if (3 * nAtoms != fitShape.coord.size()) {
     // Hs were removed
     fitShape.coord.resize(3 * nAtoms);
@@ -495,13 +604,16 @@ void TransformConformer(const std::vector<double> &finalTrans,
   Align3D::VApplyRotTransMatrix(transformed.data(), fitShape.coord.data(),
                                 fitConf.getOwningMol().getNumAtoms(),
                                 matrix.data());
-
+  //std::cout << "nAtoms which are transformed: " << nAtoms << std::endl;
   for (unsigned i = 0; i < nAtoms; ++i) {
     RDGeom::Point3D &pos = fitConf.getAtomPos(i);
+    //std::cout << "transforming atom " << i << ": " << pos.x << ", " << pos.y << ", " << pos.z << std::endl;
     pos.x = transformed[i * 3] - finalTrans[0];
     pos.y = transformed[(i * 3) + 1] - finalTrans[1];
     pos.z = transformed[(i * 3) + 2] - finalTrans[2];
+    //std::cout << "transformed atom " << i << ": " << pos.x << ", " << pos.y << ", " << pos.z << std::endl;
   }
+  //std::cout << "Done transforming atoms." << std::endl;
 }
 
 std::pair<double, double> AlignMolecule(
@@ -514,6 +626,7 @@ std::pair<double, double> AlignMolecule(
   DEBUG_MSG("Fit details:");
   ShapeInputOptions shapeOpts;
   shapeOpts.useColors = useColors;
+  
   auto fitShape = PrepareConformer(fit, fitConfId, shapeOpts);
   auto tanis = AlignShape(refShape, fitShape, matrix, opt_param, max_preiters,
                           max_postiters);
@@ -525,6 +638,7 @@ std::pair<double, double> AlignMolecule(
     finalTrans = refShape.shift;
   }
   TransformConformer(finalTrans, matrix, fitShape, fit_conformer);
+
   fit.setProp("shape_align_shape_tanimoto", tanis.first);
   fit.setProp("shape_align_color_tanimoto", tanis.second);
 
@@ -537,7 +651,14 @@ std::pair<double, double> AlignMolecule(const ROMol &ref, ROMol &fit,
                                         bool useColors, double opt_param,
                                         unsigned int max_preiters,
                                         unsigned int max_postiters) {
+
+  /*
+  for (unsigned i = 0; i < 29; ++i) {
+    RDGeom::Point3D pos = fit.getConformer(fitConfId).getAtomPos(i);
+    std::cout << "really the initial atom " << i << ": " << pos.x << ", " << pos.y << ", " << pos.z << std::endl;
+  } */                                       
   Align3D::setUseCutOff(true);
+
 
   DEBUG_MSG("Reference details:");
   ShapeInputOptions shapeOpts;
