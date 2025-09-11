@@ -528,6 +528,8 @@ ShapeInput PrepareConformer(const ROMol &mol, int confId,
   res.sov = Align3D::ComputeShapeOverlap(
       res.coord.data(), res.alpha_vector, res.volumeAtomIndexVector,
       res.coord.data(), res.alpha_vector, res.volumeAtomIndexVector);
+  // outputting volume
+  std::cout << "sov: " << res.sov << std::endl;
   DEBUG_MSG("sov: " << res.sov);
 
   // feature self overlap
