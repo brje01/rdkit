@@ -1,3 +1,6 @@
+#include <RDGeneral/export.h>
+#include "RegisterDescriptor.h"
+
 namespace RDKit {
 class ROMol;
 namespace Descriptors {  
