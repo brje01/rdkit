@@ -127,6 +127,7 @@ void ComputeGaussianVolume(
                 double expMinus_ = exp( - d2 * a_ak );
                 o += a_oe * expMinus_;
             }
+        }
     }
 } // end of anonymous namespace
 } // end of Descriptors namespace
