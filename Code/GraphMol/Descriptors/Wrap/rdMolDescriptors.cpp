@@ -24,6 +24,7 @@
 #include <GraphMol/Fingerprints/MorganFingerprints.h>
 #include <GraphMol/Fingerprints/MACCS.h>
 #include <GraphMol/Descriptors/DCLV.h>
+#include <GraphMol/Descriptors/MolGaussianVol.h>
 #include <DataStructs/BitVects.h>
 
 #include <GraphMol/Descriptors/USRDescriptor.h>
