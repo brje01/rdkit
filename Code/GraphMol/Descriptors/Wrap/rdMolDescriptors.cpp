@@ -1176,7 +1176,7 @@ BOOST_PYTHON_MODULE(rdMolDescriptors) {
               (python::arg("mol")), docString.c_str());
   python::scope().attr("_CalcNumLipinskiHBD_version") =
       RDKit::Descriptors::lipinskiHBDVersion;
-  python::def("MolGaussianVol", RDKit::Descriptors::MolGaussianVol,
+  python::def("MolGaussianVol", RDKit::Descriptors::ComputeGaussianVolume,
           (python::args("self", "mol"), python::args("confId") = -1));
   python::scope().attr("_MolGaussianVol_version") = "1.0.0";
   docString = "returns the number of Lipinski H-bond acceptors for a molecule";
