@@ -9,7 +9,7 @@
 inline constexpr double pi = 3.14159265358979323846;
 inline constexpr double _p_ = 2.7;
 inline constexpr double _p2_ = _p_ * _p_;
-inline constexpr double lambda = (4.0 * pi) / (3.0 * _p_);
+inline constexpr double lambda = 1.5514; // (4.0 * pi) / (3.0 * _p_);
 inline constexpr double kappa = pi / std::pow(lambda, 2.0 / 3.0);
 
 namespace RDKit {
@@ -30,5 +30,14 @@ double pairwiseOverlap(const RDGeom::Point3D& Ri, double alphai,
 double tripleOverlap(const RDGeom::Point3D& Ri, double alphai,
                      const RDGeom::Point3D& Rj, double alphaj,
                      const RDGeom::Point3D& Rk, double alphak);
+double quadrupleOverlap(const RDGeom::Point3D& Ri, double alphai,
+                       const RDGeom::Point3D& Rj, double alphaj,
+                       const RDGeom::Point3D& Rk, double alphak,
+                       const RDGeom::Point3D& Rl, double alphal);
+double pentupleOverlap(const RDGeom::Point3D& Ri, double alphai,
+                       const RDGeom::Point3D& Rj, double alphaj,
+                       const RDGeom::Point3D& Rk, double alphak,
+                       const RDGeom::Point3D& Rl, double alphal,
+                       const RDGeom::Point3D& Rm, double alpham);
 
 #endif
