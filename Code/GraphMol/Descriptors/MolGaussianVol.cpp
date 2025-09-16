@@ -67,7 +67,8 @@ namespace Descriptors {
                             int confId
 						 )
     {
-        std::vector<double> neighbour_list(mol.getNumAtoms());
+        std::vector<std::vector<int>> neighbour_list;
+        neighbour_list.resize(mol.getNumAtoms());
         double v = 0.0;
         double o_pairwise = 0.0;
         double o_triple = 0.0;
@@ -84,16 +85,16 @@ namespace Descriptors {
             alpha_vector.push_back(getAlpha(vdw_radii.at(atomic_num)));
             v += _p_ * std::pow(pi/alpha_vector[i],1.5);
             //identify all neighbours
-            /*for (unsigned int j = 1; j < mol.getNumAtoms(); ++j){
+            for (unsigned int j = 1; j < mol.getNumAtoms(); ++j){
               RDGeom::Point3D pos_j = conf.getAtomPos(j);
               double d = std::pow((pos.x - pos_j.x)*(pos.x - pos_j.x) + 
                          (pos.y - pos_j.y)*(pos.y - pos_j.y) + 
                          (pos.z - pos_j.z)*(pos.z - pos_j.z), 0.5);
               int atomic_num_j = mol.getAtomWithIdx(j)->getAtomicNum();
-              if (d <= vdw_radii.count(atomic_num_j)+vdw_radii.count(atomic_num)+epsilon){
-                neighbour_list[i] += 1.0;
+              if (d <= vdw_radii.at(atomic_num_j)+vdw_radii.at(atomic_num)+epsilon){
+                neighbour_list[i].push_back(j);
               }
-            }*/
+            }
         }
         // loop over all atoms
         /*for (unsigned int i = 0; i < mol.getNumAtoms(); ++i) {
@@ -113,22 +114,28 @@ namespace Descriptors {
                 }
             }
         }*/
+        std::cout << "reached" << std::endl;
         std::cout << "nAtoms: " << mol.getNumAtoms() << std::endl;
         for(unsigned int i=0;i<mol.getNumAtoms();++i){
             RDGeom::Point3D pos1 = all_positions[i];
-            for(unsigned int j=1;j<=i;++j){
-                // compute pairwise overlap
+            for(unsigned int j=1;j<i;++j){
                 RDGeom::Point3D pos2 = all_positions[j];
-                double tmp1 = 0.0;
-                tmp1 = pairwiseOverlap(pos1, alpha_vector[i],
-                                    pos2, alpha_vector[j]);
-                o_pairwise += tmp1;
-                std::cout << "pairs: " << i << "," << j << " " << tmp1 << std::endl;
-                for(unsigned int k=2;k<=j;++k){
-                    RDGeom::Point3D pos3 = all_positions[k];
-                    o_triple += tripleOverlap(pos1, alpha_vector[i],
-                                               pos2, alpha_vector[j],
-                                               pos3, alpha_vector[k]);
+                // check if j is a neighbour of i
+                if (std::find(neighbour_list[i].begin(), neighbour_list[i].end(), j) != neighbour_list[i].end()){ 
+                  // compute pairwise overlap
+                  double tmp1 = 0.0;
+                  tmp1 = pairwiseOverlap(pos1, alpha_vector[i],
+                                      pos2, alpha_vector[j]);
+                  o_pairwise += tmp1;
+                  std::cout << "pairs: " << i << "," << j << " " << tmp1 << std::endl;
+                  for(unsigned int k=2;k<j;++k){
+                      RDGeom::Point3D pos3 = all_positions[k];
+                      if (std::find(neighbour_list[j].begin(), neighbour_list[j].end(), k) != neighbour_list[j].end()){
+                        o_triple += tripleOverlap(pos1, alpha_vector[i],
+                                                  pos2, alpha_vector[j],
+                                                  pos3, alpha_vector[k]);
+                        }
+                  }
                 }
             }
         }
