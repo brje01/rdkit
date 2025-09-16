@@ -67,7 +67,12 @@ namespace Descriptors {
                             int confId
 						 )
     {
+        std::vector<double> neighbour_list(mol.getNumAtoms());
+        double v = 0.0;
+        double o_pairwise = 0.0;
+        double o_triple = 0.0;
         double o = 0.0;
+        double epsilon = 1.0; // Gaussian cutoff parameter
         const RDKit::Conformer &conf = mol.getConformer(confId);
         //get all atom positions
         std::vector<RDGeom::Point3D> all_positions;
@@ -77,9 +82,21 @@ namespace Descriptors {
             all_positions.push_back(pos);
             int atomic_num = mol.getAtomWithIdx(i)->getAtomicNum();
             alpha_vector.push_back(getAlpha(vdw_radii.at(atomic_num)));
+            v += _p_ * std::pow(pi/alpha_vector[i],1.5);
+            //identify all neighbours
+            /*for (unsigned int j = 1; j < mol.getNumAtoms(); ++j){
+              RDGeom::Point3D pos_j = conf.getAtomPos(j);
+              double d = std::pow((pos.x - pos_j.x)*(pos.x - pos_j.x) + 
+                         (pos.y - pos_j.y)*(pos.y - pos_j.y) + 
+                         (pos.z - pos_j.z)*(pos.z - pos_j.z), 0.5);
+              int atomic_num_j = mol.getAtomWithIdx(j)->getAtomicNum();
+              if (d <= vdw_radii.count(atomic_num_j)+vdw_radii.count(atomic_num)+epsilon){
+                neighbour_list[i] += 1.0;
+              }
+            }*/
         }
         // loop over all atoms
-        for (unsigned int i = 0; i < mol.getNumAtoms(); ++i) {
+        /*for (unsigned int i = 0; i < mol.getNumAtoms(); ++i) {
             RDGeom::Point3D pos1 = all_positions[i];
             for (unsigned int j = 0; j < mol.getNumAtoms(); ++j) {
                 RDGeom::Point3D pos2 = all_positions[j];
@@ -95,15 +112,38 @@ namespace Descriptors {
                     o += a_oe * expMinus_;
                 }
             }
+        }*/
+        std::cout << "nAtoms: " << mol.getNumAtoms() << std::endl;
+        for(unsigned int i=0;i<mol.getNumAtoms();++i){
+            RDGeom::Point3D pos1 = all_positions[i];
+            for(unsigned int j=1;j<=i;++j){
+                // compute pairwise overlap
+                RDGeom::Point3D pos2 = all_positions[j];
+                double tmp1 = 0.0;
+                tmp1 = pairwiseOverlap(pos1, alpha_vector[i],
+                                    pos2, alpha_vector[j]);
+                o_pairwise += tmp1;
+                std::cout << "pairs: " << i << "," << j << " " << tmp1 << std::endl;
+                for(unsigned int k=2;k<=j;++k){
+                    RDGeom::Point3D pos3 = all_positions[k];
+                    o_triple += tripleOverlap(pos1, alpha_vector[i],
+                                               pos2, alpha_vector[j],
+                                               pos3, alpha_vector[k]);
+                }
+            }
         }
-        return o;
+        std::cout << "o_pairwise: " << o_pairwise << std::endl;
+        std::cout << "o_triple: " << o_triple << std::endl;
+        return v - o_pairwise + o_triple;
+        //return o;
     }
 
 } // end of Descriptors namespace
 } // end of RDKit namespace
 
 double getD2CutOff(){
-  return std::numeric_limits<double>::max();
+  // return std::numeric_limits<double>::max();
+  return 9.0;
 }
 
 double getA_ak( double alpha1, double alpha2 ){
@@ -131,4 +171,43 @@ double getAlpha( double r ){
     alpha = kappa/( r*r );
   }
   return alpha;
+}
+
+double pairwiseOverlap(const RDGeom::Point3D& Ri, double alphai,
+                       const RDGeom::Point3D& Rj, double alphaj){
+  double alpha_sum = alphai + alphaj;
+  double prefactor = std::pow(pi/alpha_sum, 1.5);
+  double Rij_squared = (Ri.x - Rj.x)*(Ri.x - Rj.x) +
+             (Ri.y - Rj.y)*(Ri.y - Rj.y) +
+             (Ri.z - Rj.z)*(Ri.z - Rj.z);
+  double exponent = - ((alphai * alphaj * Rij_squared)/alpha_sum);
+  return prefactor * exp(exponent);
+}
+
+double tripleOverlap(const RDGeom::Point3D& Ri, double alphai,
+                       const RDGeom::Point3D& Rj, double alphaj,
+                       const RDGeom::Point3D& Rk, double alphak) {
+  double alpha_ij = alphai + alphaj;
+  double alpha_ijk = alpha_ij + alphak;
+
+  // Weighted centers
+  RDGeom::Point3D Rij;
+  Rij.x = (alphai * Ri.x + alphaj * Rj.x) / alpha_ij;
+  Rij.y = (alphai * Ri.y + alphaj * Rj.y) / alpha_ij;
+  Rij.z = (alphai * Ri.z + alphaj * Rj.z) / alpha_ij;
+  RDGeom::Point3D Rijk;
+  Rijk.x = (alpha_ij * Rij.x + alphak * Rk.x) / alpha_ijk;
+  Rijk.y = (alpha_ij * Rij.y + alphak * Rk.y) / alpha_ijk;
+  Rijk.z = (alpha_ij * Rij.z + alphak * Rk.z) / alpha_ijk;
+
+  // Q terms
+  double Qij = (alphai * alphaj / alpha_ij) * (Ri - Rj).lengthSq();
+  double Qijk = (alpha_ij * alphak / alpha_ijk) * (Rij - Rk).lengthSq();
+  double Q = Qij + Qijk;
+
+  // Prefactor
+  double prefactor = std::pow(pi / alpha_ijk, 1.5);
+
+  // Triple overlap
+  return prefactor * std::exp(-Q);
 }

@@ -25,5 +25,10 @@ double getD2CutOff();
 double getAlpha(double radius);
 double getOverlap0(double alpha1, double alpha2);
 double getA_ak(double alpha1, double alpha2);
+double pairwiseOverlap(const RDGeom::Point3D& Ri, double alphai,
+                       const RDGeom::Point3D& Rj, double alphaj);
+double tripleOverlap(const RDGeom::Point3D& Ri, double alphai,
+                     const RDGeom::Point3D& Rj, double alphaj,
+                     const RDGeom::Point3D& Rk, double alphak);
 
 #endif
