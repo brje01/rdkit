@@ -74,6 +74,7 @@ namespace Descriptors {
         double o_triple = 0.0;
         double o_quadruple = 0.0;
         double o_pentuple = 0.0;
+        double o_sextuple = 0.0;
         double epsilon = 1.0; // Gaussian cutoff parameter
         const RDKit::Conformer &conf = mol.getConformer(confId);
         //get all atom positions
@@ -129,8 +130,19 @@ namespace Descriptors {
                                                         pos2, alpha_vector[j],
                                                         pos3, alpha_vector[k],
                                                         pos4, alpha_vector[l],
-                                                        pos5, alpha_vector[m]);   
-                                  } 
+                                                        pos5, alpha_vector[m]);
+                                    for(unsigned int n=5;n<m;++n){
+                                        RDGeom::Point3D pos6 = all_positions[n];
+                                        if (std::find(neighbour_list[m].begin(), neighbour_list[m].end(), n) != neighbour_list[m].end()){
+                                          o_sextuple += sextupleOverlap(pos1, alpha_vector[i],
+                                                              pos2, alpha_vector[j],
+                                                              pos3, alpha_vector[k],
+                                                              pos4, alpha_vector[l],
+                                                              pos5, alpha_vector[m],
+                                                              pos6, alpha_vector[n]);    
+                                          }
+                                        }
+                                  }   
                               }
                             }
                           }
@@ -144,7 +156,8 @@ namespace Descriptors {
         std::cout << "o_triple: " << o_triple << std::endl;
         std::cout << "o_quadruple: " << o_quadruple << std::endl;
         std::cout << "o_pentuple: " << o_pentuple << std::endl;
-        return v - o_pairwise + o_triple - o_quadruple + o_pentuple;  
+        std::cout << "o_sextuple: " << o_sextuple << std::endl;
+        return v - o_pairwise + o_triple - o_quadruple + o_pentuple - o_sextuple;
         //return o;
     }
 
@@ -297,4 +310,50 @@ double pentupleOverlap(const RDGeom::Point3D& Ri, double alphai,
 
   // Pentuple overlap
   return _p2_ * _p2_ * _p_ * prefactor * std::exp(-Q);
+}
+
+double sextupleOverlap(const RDGeom::Point3D& Ri, double alphai,
+                       const RDGeom::Point3D& Rj, double alphaj,
+                       const RDGeom::Point3D& Rk, double alphak,
+                       const RDGeom::Point3D& Rl, double alphal,
+                       const RDGeom::Point3D& Rm, double alpham,
+                       const RDGeom::Point3D& Rn, double alphan) {
+  double alpha_ij = alphai + alphaj;
+  double alpha_ijk = alpha_ij + alphak;
+  double alpha_ijkl = alpha_ijk + alphal;
+  double alpha_ijklm = alpha_ijkl + alpham;
+  double alpha_ijklmn = alpha_ijklm + alphan;
+
+  // Weighted centers
+  RDGeom::Point3D Rij;
+  Rij.x = (alphai * Ri.x + alphaj * Rj.x) / alpha_ij;
+  Rij.y = (alphai * Ri.y + alphaj * Rj.y) / alpha_ij;
+  Rij.z = (alphai * Ri.z + alphaj * Rj.z) / alpha_ij;
+  RDGeom::Point3D Rijk;
+  Rijk.x = (alpha_ij * Rij.x + alphak * Rk.x) / alpha_ijk;
+  Rijk.y = (alpha_ij * Rij.y + alphak * Rk.y) / alpha_ijk;
+  Rijk.z = (alpha_ij * Rij.z + alphak * Rk.z) / alpha_ijk;
+  RDGeom::Point3D Rijkl;
+  Rijkl.x = (alpha_ijk * Rijk.x + alphal * Rl.x) / alpha_ijkl;
+  Rijkl.y = (alpha_ijk * Rijk.y + alphal * Rl.y) / alpha_ijkl;
+  Rijkl.z = (alpha_ijk * Rijk.z + alphal * Rl.z) / alpha_ijkl;
+  RDGeom::Point3D Rijklm;
+  Rijklm.x = (alpha_ijkl * Rijkl.x + alpham * Rm.x) / alpha_ijklm;
+  Rijklm.y = (alpha_ijkl * Rijkl.y + alpham * Rm.y) / alpha_ijklm;
+  Rijklm.z = (alpha_ijkl * Rijkl.z + alpham * Rm.z) / alpha_ijklm;
+  RDGeom::Point3D Rijklmn;
+  Rijklmn.x = (alpha_ijklm * Rijklm.x + alphan * Rn.x) / alpha_ijklmn;
+  Rijklmn.y = (alpha_ijklm * Rijklm.y + alphan * Rn.y) / alpha_ijklmn;
+  Rijklmn.z = (alpha_ijklm * Rijklm.z + alphan * Rn.z) / alpha_ijklmn;
+  // Q terms
+  double Qij = (alphai * alphaj / alpha_ij) * (Ri - Rj).lengthSq();
+  double Qijk = (alpha_ij * alphak / alpha_ijk) * (Rij - Rk).lengthSq();
+  double Qijkl = (alpha_ijk * alphal / alpha_ijkl) * (Rijk - Rl).lengthSq();
+  double Qijklm = (alpha_ijkl * alpham / alpha_ijklm) * (Rijkl - Rm).lengthSq();
+  double Qijklmn = (alpha_ijklm * alphan / alpha_ijklmn) * (Rijklm - Rn).lengthSq();
+  double Q = Qij + Qijk + Qijkl + Qijklm + Qijklmn; 
+  // Prefactor
+  double prefactor = std::pow(pi / alpha_ijklmn, 1.5);
+  // Sextuple overlap
+  return _p2_ * _p2_ * _p2_ * prefactor * std::exp(-Q);
 }

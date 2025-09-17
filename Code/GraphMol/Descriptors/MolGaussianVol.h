@@ -39,5 +39,11 @@ double pentupleOverlap(const RDGeom::Point3D& Ri, double alphai,
                        const RDGeom::Point3D& Rk, double alphak,
                        const RDGeom::Point3D& Rl, double alphal,
                        const RDGeom::Point3D& Rm, double alpham);
+double sextupleOverlap(const RDGeom::Point3D& Ri, double alphai,
+                       const RDGeom::Point3D& Rj, double alphaj,
+                       const RDGeom::Point3D& Rk, double alphak,
+                       const RDGeom::Point3D& Rl, double alphal,
+                       const RDGeom::Point3D& Rm, double alpham,
+                       const RDGeom::Point3D& Rn, double alphan);
 
 #endif
