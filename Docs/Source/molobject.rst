@@ -3,20 +3,6 @@
 The Mol Object
 ==============
 
-Every Way To Construct a Mol Object
------------------------------------
-A mol object can be constructured in various ways, with the most common ones being
-- From a SMILES string
-- From a 3D coordinate file such as a SD file
-
-.. code-block:: python
-
-   from rdkit import Chem
-   # mol from SMILES
-   mol = Chem.MolFromSmiles('CCO')
-   # mol from 3D coordinates
-   mol = Chem.MolFromMolFile('molecule.sdf')
-
 Mol Methods
 -----------
 
