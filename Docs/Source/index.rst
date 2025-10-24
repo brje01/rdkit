@@ -11,3 +11,4 @@ The RDKit is an open-source toolkit for cheminformatics and machine learning.
 
    gettingstarted
    molobject
+   fingerprints
