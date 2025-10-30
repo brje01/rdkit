@@ -33,3 +33,5 @@ The RDKit is an open-source toolkit for cheminformatics and machine learning.
    :maxdepth: 2
    :hidden:
    :caption: Tutorials and Examples 
+
+   contribute
