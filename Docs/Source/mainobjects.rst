@@ -40,6 +40,10 @@ Molecules are composed of ``Atom`` and ``Bond`` objects representing the molecul
 They can only be accessed through the mol object methods ``GetAtoms()`` and ``GetBonds()``.
 See :ref:`Mol object <Mol object>` for more details on the mol object and its methods.
 
+See :ref:`Atom object <Atom object>` for more details on the atom object and its methods.
+
+See :ref:`Bond object <Bond object>` for more details on the bond object and its methods.
+
 Reading In Multiple Molecules
 ------------------------------
 

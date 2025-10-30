@@ -11,7 +11,13 @@ The RDKit is an open-source toolkit for cheminformatics and machine learning.
 
    gettingstarted
    mainobjects
+
+.. toctree::
+   :maxdepth: 2
+   :caption: Functionalities
+
    fingerprints
+   shape
 
 .. toctree::
    :maxdepth: 2
@@ -20,6 +26,8 @@ The RDKit is an open-source toolkit for cheminformatics and machine learning.
 
    molobject
    conformerobject
+   atomobject
+   bondobject
 
 .. toctree::
    :maxdepth: 2
